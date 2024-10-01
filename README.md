@@ -1,2 +1,1 @@
-# peanut-plugin
-Plugin for Peanut for Wordpress
+# Peanut for Wordpress Plugin
