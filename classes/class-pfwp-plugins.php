@@ -14,7 +14,7 @@ class PFWP_Plugins {
 		global $pfwp_global_config;
 
 		$assets = PFWP_Assets::get_key_assets( 'plugins', $key, $entry_key );
-		$wp_deps_file = $pfwp_global_config->wp_root . '/' . PFWP_Assets::get_wp_deps( 'plugins', $key, $entry_key );
+		$wp_deps_file = ABSPATH . PFWP_Assets::get_wp_deps( 'plugins', $key, $entry_key );
 	
 		$deps = require $wp_deps_file;
 	

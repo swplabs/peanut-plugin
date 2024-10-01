@@ -7,17 +7,23 @@ if ( ! defined( 'PFWP_VERSION' ) ) {
 }
 
 class PFWP_Assets {
-	private static $assets;
+	private static $assets = array(
+		'blocks' => array(),
+		'components' => array(),
+		'plugins' => array()		
+	);
 	private static $preloads = [];
 
 	public static function initialize() {
 		global $pfwp_global_config;
 
-		self::$assets = (object) array(
-			'blocks' => property_exists( $pfwp_global_config->compilations, 'blocks_elements' ) ? $pfwp_global_config->compilations->blocks_elements : (object) array(),
-			'components' => property_exists( $pfwp_global_config->compilations, 'components_elements' ) ? $pfwp_global_config->compilations->components_elements : (object) array(),
-			'plugins' => property_exists( $pfwp_global_config->compilations, 'plugins_elements' ) ? $pfwp_global_config->compilations->plugins_elements : (object) array(),
-		);
+		if ( property_exists(  $pfwp_global_config, 'compilations' ) ) {
+			self::$assets = (object) array(
+				'blocks' => property_exists( $pfwp_global_config->compilations, 'blocks_elements' ) ? $pfwp_global_config->compilations->blocks_elements : (object) array(),
+				'components' => property_exists( $pfwp_global_config->compilations, 'components_elements' ) ? $pfwp_global_config->compilations->components_elements : (object) array(),
+				'plugins' => property_exists( $pfwp_global_config->compilations, 'plugins_elements' ) ? $pfwp_global_config->compilations->plugins_elements : (object) array(),
+			);
+		}
 	}
 
 	private static function register_runtime_script( $script_name ) {
@@ -109,11 +115,11 @@ class PFWP_Assets {
 			$file_path = parse_url( $file_path)['path'];
 		}
 
-		if ( !str_starts_with( $file_path, '/' ) ) {
-			$file_path = '/' . $file_path;
+		if ( str_starts_with( $file_path, '/' ) ) {
+			$file_path = substr( $file_path, 1 );
 		}
 
-		$content = file_get_contents( $pfwp_global_config->wp_root . $file_path );
+		$content = file_get_contents( ABSPATH . $file_path );
 		return $minify ? self::simple_minify( $content ) : $content;
 	}
 

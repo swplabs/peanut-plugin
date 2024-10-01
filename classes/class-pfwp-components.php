@@ -223,7 +223,7 @@ class PFWP_Components {
 		if ( property_exists( $component_chunks, 'pfwp_sdk' ) ) {
 			echo '<script src="' . $pfwp_global_config->public_path . PFWP_Assets::get_assets( 'components' )->chunk_groups->pfwp_sdk->main_assets[0]->name . '" id="pfwp_js_sdk"></script>' . PHP_EOL;
 		} else {
-			$sdk_js = PFWP_PLUGIN_URL . '/assets/pfwp_sdk.687ba32e11de9bc0a256.js';
+			$sdk_js = PFWP_PLUGIN_URL . '/assets/pfwp_sdk.bc8f50436adbc246f191.js';
 			echo '<script src="' . $sdk_js . '" id="pfwp_js_sdk"></script>' . PHP_EOL;
 		}
 

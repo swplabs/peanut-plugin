@@ -3,7 +3,7 @@
 Plugin Name: Peanut For WordPress
 Plugin URI: https://github.com/swplabs
 Description: Peanut for WordPress!
-Version: 0.1.0-alpha.2
+Version: 0.1.0-alpha.4
 Author: SWP Labs
 Author URI: https://www.sassywackypeanut.com/labs/
 License: GPLv2 or later
@@ -17,7 +17,7 @@ if ( ! function_exists( 'add_filter' ) ) {
 }
 
 if ( ! defined( 'PFWP_VERSION' ) ) {
-	define( 'PFWP_VERSION', '0.1.0-alpha.2' );
+	define( 'PFWP_VERSION', '0.1.0-alpha.4' );
 }
 
 if ( ! defined( 'PFWP_PLUGIN_FILE' ) ) {
@@ -45,9 +45,25 @@ global $pfwp_global_config, $pfwp_ob_replace_vars;
 
 // Utils
 require PFWP_PLUGIN_DIR . '/classes/class-pfwp-utils.php';
-		
-// TODO: add error log and admin_notice message if primary file is not found
-$pfwp_global_config = json_decode( @file_get_contents( PFWP_TEMPLATE_DIR . '/pfwp.json' ), false );
+
+
+$pfwp_global_config_file = PFWP_TEMPLATE_DIR . '/pfwp.json';
+
+if ( file_exists( $pfwp_global_config_file ) ) {
+	$pfwp_global_config = json_decode( @file_get_contents( $pfwp_global_config_file ), false );
+} else {
+	error_log('Error: Peanut for Wordpress configuration file missing');
+	
+	$pfwp_global_config = (object) array();
+	
+	add_action( 'admin_notices', function () {
+		$class = 'notice notice-warning';
+		$message = __( '<strong>Peanut For Wordpress</strong>: Configuration file (pfwp.json) not found. This most likely means you haven\'t compile anything with Peanut yet. Hurry up and build something awesome!', 'pfwp' );
+			printf( '<div class="%1$s"><p>%2$s</p></div>', esc_attr( $class ), $message );
+	});
+	
+	return;
+}
 
 if ( property_exists( $pfwp_global_config, 'primary' ) ) {
 	$secondary_config_files = glob(PFWP_TEMPLATE_DIR . '\/pfwp.*.json');
