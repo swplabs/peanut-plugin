@@ -20,7 +20,7 @@ global $pfwp_global_config, $wp_query;
   <body>
     <div id="pfwp_component">
       <?php
-      $component = $wp_query->query_vars['pfwp_component'];
+      $component = $wp_query->query_vars['pfwp_element_key'];
 
       get_template_part( 'components/' . $component . '/index' );
       ?>

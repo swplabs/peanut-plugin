@@ -12,6 +12,7 @@ class PFWP_Assets {
 		'components' => array(),
 		'plugins' => array()		
 	);
+	
 	private static $preloads = [];
 
 	public static function initialize() {
@@ -52,7 +53,7 @@ class PFWP_Assets {
 	}
 
 	public static function has_asset( $group = 'components', $key = '', $entry_key = '' ) {
-		return property_exists( self::$assets->{$group}->entry_map, $key ) && property_exists( self::$assets->{$group}->entry_map->{$key}, $entry_key );
+		return property_exists( self::$assets->{$group}, 'entry_map' ) && property_exists( self::$assets->{$group}->entry_map, $key ) && property_exists( self::$assets->{$group}->entry_map->{$key}, $entry_key );
 	}
 
 	private static function simple_minify( $content ) {

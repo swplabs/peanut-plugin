@@ -209,8 +209,11 @@ class PFWP_Components {
 	public static function inject_footer() {
 		global $pfwp_global_config;
 
-		$metadata = $pfwp_global_config->compilations->components_elements->metadata;
-		$component_chunks = PFWP_Assets::get_assets( 'components' )->chunk_groups;
+		$metadata = property_exists( $pfwp_global_config->compilations, 'components_elements' ) && property_exists( $pfwp_global_config->compilations->components_elements, 'metadata' ) ? $pfwp_global_config->compilations->components_elements->metadata : (object) array();
+		
+		$components = PFWP_Assets::get_assets( 'components' );
+		
+		$component_chunks = property_exists( $components, 'chunk_groups' ) ? $components->chunk_groups : (object) array();
 		
 		$config_data = (object) array(
 			'data_mode' => $pfwp_global_config->data_mode
@@ -221,9 +224,9 @@ class PFWP_Components {
 		echo '</script>' . PHP_EOL;
 		
 		if ( property_exists( $component_chunks, 'pfwp_sdk' ) ) {
-			echo '<script src="' . $pfwp_global_config->public_path . PFWP_Assets::get_assets( 'components' )->chunk_groups->pfwp_sdk->main_assets[0]->name . '" id="pfwp_js_sdk"></script>' . PHP_EOL;
+			echo '<script src="' . $pfwp_global_config->public_path . $components->chunk_groups->pfwp_sdk->main_assets[0]->name . '" id="pfwp_js_sdk"></script>' . PHP_EOL;
 		} else {
-			$sdk_js = PFWP_PLUGIN_URL . '/assets/pfwp_sdk.bc8f50436adbc246f191.js';
+			$sdk_js = PFWP_PLUGIN_URL . '/assets/pfwp_sdk.9ab93684f45e90a56e9e.js';
 			echo '<script src="' . $sdk_js . '" id="pfwp_js_sdk"></script>' . PHP_EOL;
 		}
 
@@ -273,7 +276,7 @@ class PFWP_Components {
 	public static function add_head_style_var() {
 		global $pfwp_global_config, $pfwp_ob_replace_vars;
 
-		$metadata = $pfwp_global_config->compilations->components_elements->metadata;
+		$metadata = property_exists( $pfwp_global_config->compilations, 'components_elements' ) && property_exists( $pfwp_global_config->compilations->components_elements, 'metadata' ) ? $pfwp_global_config->compilations->components_elements->metadata : (object) array();
 
 		$styles = '';
 		self::$comp_css_data = (object) [];

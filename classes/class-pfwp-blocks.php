@@ -17,13 +17,16 @@ class PFWP_Blocks {
 
 	public static function initialize() {
 		global $pfwp_global_config;
+				
 		self::$blocks = PFWP_Assets::get_assets( 'blocks' );
 		self::$deps = file_exists( get_template_directory() . '/blocks/deps.php' ) ? require get_template_directory() . '/blocks/deps.php' : array();
 
 		// Register block index files
-		foreach ( self::$blocks->entry_map as $key => $value ) {
-			if ( property_exists( $value, 'php_index' ) ) {
-				require_once get_template_directory() . '/blocks/' . $key . '/index.php';
+		if ( property_exists( self::$blocks, 'entry_map' ) ) {
+			foreach ( self::$blocks->entry_map as $key => $value ) {
+				if ( property_exists( $value, 'php_index' ) ) {
+					require_once get_template_directory() . '/blocks/' . $key . '/index.php';
+				}
 			}
 		}
 
@@ -38,6 +41,10 @@ class PFWP_Blocks {
 
 	public static function register() {
 		global $pfwp_global_config;
+		
+		if ( !property_exists( self::$blocks, 'entry_map' ) ) {
+			return;
+		}
 
 		foreach ( self::$blocks->entry_map as $key => $value ) {
 
