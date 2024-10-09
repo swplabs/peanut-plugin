@@ -3,7 +3,7 @@
 Plugin Name: Peanut For WordPress
 Plugin URI: https://github.com/swplabs
 Description: Peanut for WordPress!
-Version: 0.1.0-alpha.5
+Version: 0.1.0-alpha.6
 Author: SWP Labs
 Author URI: https://www.sassywackypeanut.com/labs/
 License: GPLv2 or later
@@ -17,7 +17,7 @@ if ( ! function_exists( 'add_filter' ) ) {
 }
 
 if ( ! defined( 'PFWP_VERSION' ) ) {
-	define( 'PFWP_VERSION', '0.1.0-alpha.5' );
+	define( 'PFWP_VERSION', '0.1.0-alpha.6' );
 }
 
 if ( ! defined( 'PFWP_PLUGIN_FILE' ) ) {
@@ -61,7 +61,7 @@ if ( file_exists( $pfwp_global_config_file ) ) {
 		$message = __( '<strong>Peanut For Wordpress</strong>: Configuration file (pfwp.json) not found. This most likely means you haven\'t compile anything with Peanut yet. Hurry up and build something awesome!', 'pfwp' );
 			printf( '<div class="%1$s"><p>%2$s</p></div>', esc_attr( $class ), $message );
 	});
-	
+		
 	return;
 }
 
@@ -79,10 +79,10 @@ $pfwp_ob_replace_vars = array(
 	'replace' => array()
 );
 
+// TODO: define rest route constants (namespace, version, etc)
+
 // Core
 require PFWP_PLUGIN_DIR . '/classes/class-pfwp-core.php';
-
-// TODO: define rest route constants (namespace, version, etc)
 
 // Assets Engine
 require PFWP_PLUGIN_DIR . '/classes/class-pfwp-assets.php';

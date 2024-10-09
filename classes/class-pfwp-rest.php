@@ -3,7 +3,7 @@
 class PFWP_REST {
   public static $component_json = null;
   public static $data = array();
-
+  
   public static function get_json( $comp_name ) {
     global $pfwp_global_config;
     
@@ -25,6 +25,10 @@ class PFWP_REST {
   public static function validate_use( $comp_name ) {
     global $pfwp_global_config;
 
+    if ( PFWP_Core::is_dev_enabled() ) {
+      return true;
+    }
+    
     return property_exists( $pfwp_global_config->compilations->components_elements->metadata, $comp_name ) && $pfwp_global_config->compilations->components_elements->metadata->{$comp_name}->showInRest === true;
   }
 
@@ -87,6 +91,25 @@ class PFWP_REST {
         )
       )
     );
+    
+    if ( PFWP_Core::is_dev_enabled() ) {
+      register_rest_route(
+        'pfwp/v1',
+        '/metadata/(?P<name>[A-Za-z0-9\-\_]+)',
+        array(
+          'methods'  => WP_REST_Server::READABLE,
+          'callback' => array( 'PFWP_REST', 'get_metadata' ),
+          'permission_callback' => '__return_true',
+          'args' => array(
+            'name' => array(
+              'required' =>  true,
+              'type' => 'string',
+              'validate_callback' => array( 'PFWP_REST', 'validate_name' )
+            )
+          )
+        )
+      );
+    }
 	}
 
   public static function get_component( $request ) {
@@ -105,6 +128,23 @@ class PFWP_REST {
         'data' => PFWP_Components::$js_data
       )
     );
+  }
+
+  public static function get_metadata( $request ) {
+    global $pfwp_global_config;
+    
+    $params = $request->get_params();
+
+    $comp_name = $params['name'];
+    $components = $pfwp_global_config->compilations->components_elements;
+
+    $json = (object) array();
+    
+    if ( property_exists( $components->metadata, $comp_name ) && $components->metadata->{$comp_name}->hasSchema === true ) {
+      $json = PFWP_REST::get_json( $params['name']  );
+    }
+
+    return rest_ensure_response( $json );
   }
 }
 

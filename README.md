@@ -4,7 +4,7 @@ Framework needed for Peanut for Wordpress development application. You will need
 
 ## Documentation
 
-More documentation can be found at [Peanut for Wordpress on Gitbooks](https://docs.swplabs.com/peanut-for-wordpress/getting-started/quickstart).
+More documentation can be found at [Peanut for Wordpress on Gitbooks](https://docs.swplabs.com/peanut-for-wordpress/getting-started/).
 
 ## Support Us
 

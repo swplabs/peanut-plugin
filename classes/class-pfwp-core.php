@@ -7,6 +7,8 @@ if ( ! defined( 'PFWP_VERSION' ) ) {
 }
 
 class PFWP_Core {
+  private static $enable_dev = false;
+  
   public static function initialize() {
     global $pfwp_global_config, $pfwp_ob_replace_vars;
 
@@ -22,17 +24,24 @@ class PFWP_Core {
     
     switch ( wp_get_environment_type() ) {
       case 'local':
-      case 'development':
+      case 'development': {
+        PFWP_Core::$enable_dev = true;
+        
         require PFWP_PLUGIN_DIR . '/classes/class-pfwp-whiteboard.php';
     
         register_activation_hook( PFWP_PLUGIN_FILE, function () {
           PFWP_WB::rewrite_rules();
           flush_rewrite_rules();
         } );
-      break;
+        break;
+      }
     }
   }
 
+  public static function is_dev_enabled() {
+    return PFWP_Core::$enable_dev;
+  }
+  
   public static function capture_ob() {
     ob_start();
   }
