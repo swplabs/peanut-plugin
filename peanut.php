@@ -3,7 +3,7 @@
 Plugin Name: Peanut For WordPress
 Plugin URI: https://github.com/swplabs
 Description: Peanut for WordPress!
-Version: 0.1.0-alpha.6
+Version: 0.1.0-alpha.8
 Author: SWP Labs
 Author URI: https://www.sassywackypeanut.com/labs/
 License: GPLv2 or later
@@ -17,7 +17,7 @@ if ( ! function_exists( 'add_filter' ) ) {
 }
 
 if ( ! defined( 'PFWP_VERSION' ) ) {
-	define( 'PFWP_VERSION', '0.1.0-alpha.6' );
+	define( 'PFWP_VERSION', '0.1.0-alpha.8' );
 }
 
 if ( ! defined( 'PFWP_PLUGIN_FILE' ) ) {
