@@ -16,7 +16,7 @@ class PFWP_Core {
       add_action( 'admin_notices', function () {
         if  (!defined( 'SCRIPT_DEBUG' ) || !SCRIPT_DEBUG ) {
           $class = 'notice notice-error';
-          $message = __( '<strong>Peanut For Wordpress</strong>: Script Debugging must be set to true when in development mode for Peanut editor scripts to function. See <a href="https://wordpress.org/documentation/article/debugging-in-wordpress/#script_debug" target="_blank">Wordpress debugging mode</a> for instructions.', 'pfwp' );
+          $message = __( '<strong>Peanut For WordPress</strong>: Script Debugging must be set to true when in development mode for Peanut editor scripts to function. See <a href="https://wordpress.org/documentation/article/debugging-in-wordpress/#script_debug" target="_blank">WordPress debugging mode</a> for instructions.', 'pfwp' );
             printf( '<div class="%1$s"><p>%2$s</p></div>', esc_attr( $class ), $message );
         }
       });
@@ -82,5 +82,3 @@ add_action( 'template_redirect', array( 'PFWP_Core', 'capture_ob' ), 8 );
 
 // TODO: create custom "pfwp_end_marker" action for this
 add_action( 'wp_footer', array( 'PFWP_Core', 'process_ob' ), 9999 );
-
-?>
