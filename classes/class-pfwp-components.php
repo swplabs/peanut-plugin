@@ -14,6 +14,7 @@ class PFWP_Components {
 	public static $js_data;
 	public static $comp_css_data;
  	public static $comp_css_metadata;
+	private static $inline_styles = array();
 
 	private static function get_key( $slug, $name ) {
 		$matches = self::match_file_name( $slug );
@@ -37,7 +38,7 @@ class PFWP_Components {
 	}
 
 	// TODO: can we define defaults for a components parse_args in JSON metadata schema and use here if available?
-	public static function parse_args( $array1, $array2 ) {
+	public static function parse_args( $array1, $array2, $sort = true ) {
 		$merged = $array2;
 
 		foreach ( $array1 as $key => &$value ) {
@@ -48,7 +49,9 @@ class PFWP_Components {
 			}
 		}
 
-		PFWP_Core::sort_assoc_array( $merged );
+		if ( $sort ) {
+			PFWP_Core::sort_assoc_array( $merged );
+		}
 		
 		return $merged;
 	}
@@ -226,7 +229,7 @@ class PFWP_Components {
 		if ( property_exists( $component_chunks, 'pfwp_sdk' ) ) {
 			echo '<script src="' . $pfwp_global_config->public_path . $components->chunk_groups->pfwp_sdk->main_assets[0]->name . '" id="pfwp_js_sdk"></script>' . PHP_EOL;
 		} else {
-			$sdk_js = PFWP_PLUGIN_URL . '/assets/pfwp_sdk.54b716c70e42cceaba45.js';
+			$sdk_js = PFWP_PLUGIN_URL . '/assets/pfwp_sdk.9b541e5e7ddfdf6a80b6.js';
 			echo '<script src="' . $sdk_js . '" id="pfwp_js_sdk"></script>' . PHP_EOL;
 		}
 
@@ -272,6 +275,10 @@ class PFWP_Components {
 		echo '  window.pfwpInitialize(document.getElementById(\'pfwp_footer_scripts\'), ' . json_encode( $pfwp_js_data ) . ');'. PHP_EOL;
 		echo '</script>' . PHP_EOL;
 	}
+	
+	public static function add_inline_style( $css ) {
+		array_push( self::$inline_styles, $css . PHP_EOL );
+	}
 
 	public static function add_head_style_var() {
 		global $pfwp_global_config, $pfwp_ob_replace_vars;
@@ -300,7 +307,7 @@ class PFWP_Components {
 		}
 
 		array_push( $pfwp_ob_replace_vars['search'], '<!-- pfwp:head:styles -->' );
-		array_push( $pfwp_ob_replace_vars['replace'], $styles );
+		array_push( $pfwp_ob_replace_vars['replace'], $styles . ( count( self::$inline_styles ) > 0 ? implode( '', self::$inline_styles ) : '' ) );
 	}
 
 	public static function mark_head_styles() {
@@ -309,13 +316,8 @@ class PFWP_Components {
 }
 
 add_action( 'after_setup_theme', array( 'PFWP_Components', 'initialize' ), 2 );
-
 add_action( 'get_template_part', array( 'PFWP_Components', 'process_template_part' ), 10, 3 );
-
-// add_action( 'template_redirect', array( 'PFWP_Components', 'capture_ob' ), 9 );
-
 add_action( 'wp_footer', array( 'PFWP_Components', 'inline_instance_js_data' ), 998 );
-
 add_action( 'wp_footer', array( 'PFWP_Components', 'inject_footer' ), 1000 );
 
 // TODO: create custom "pfwp_end_marker" action for this
