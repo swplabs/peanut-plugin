@@ -83,44 +83,48 @@ class PFWP_Blocks {
 	 */
 	public static function filter_render( $block_content, $block ) {
 		$blockName = $block['blockName'];
-
+		
 		// If component PHP exists, do the thang
-		if ( property_exists( self::$render_filters, $blockName ) && '' !== locate_template( self::$render_filters->$blockName . '/index.php' ) ) {
-			return PFWP_Components::get_template_part(
-				self::$render_filters->$blockName . '/index',
-				null,
-				array(
-					'filter_type' => 'render',
-					'attributes'  => $block['attrs'],
-					'content'     => $block_content,
-				)
-			);
-		} elseif ( property_exists( self::$render_filters, $blockName ) ) {
-			// If no PHP exists for filter, still add component CSS and JS assets if they exists
-			PFWP_Components::process_template_part( self::$render_filters->$blockName . '/index' );
+		if ( !empty( $blockName ) ) {		
+			if ( property_exists( self::$render_filters, $blockName ) && '' !== locate_template( self::$render_filters->$blockName . '/index.php' ) ) {
+				return PFWP_Components::get_template_part(
+					self::$render_filters->$blockName . '/index',
+					null,
+					array(
+						'filter_type' => 'render',
+						'attributes'  => $block['attrs'],
+						'content'     => $block_content,
+					)
+				);
+			} elseif ( property_exists( self::$render_filters, $blockName ) ) {
+				// If no PHP exists for filter, still add component CSS and JS assets if they exists
+				PFWP_Components::process_template_part( self::$render_filters->$blockName . '/index' );
+			}
 		}
-
+		
 		return $block_content;
 	}
 
 	public static function filter_pre_render( $pre_render, $parsed_block, $parent_block ) {
-		$block     = $parsed_block;
+		$block = $parsed_block;
 		$blockName = $block['blockName'];
 
 		// If component PHP exists, do the other thang
-		if ( property_exists( self::$pre_render_filters, $blockName ) && '' !== locate_template( self::$pre_render_filters->$blockName . '/index.php' ) ) {
-			return PFWP_Components::get_template_part(
-				self::$pre_render_filters->$blockName . '/index',
-				null,
-				array(
-					'filter_type'  => 'pre_render',
-					'attributes'   => $block['attrs'],
-					'inner_blocks' => $block['innerBlocks'],
-				)
-			);
-		} elseif ( property_exists( self::$pre_render_filters, $blockName ) ) {
-			// If no PHP exists for filter, still add component CSS and JS assets if they exists
-			PFWP_Components::process_template_part( self::$pre_render_filters->$blockName . '/index' );
+		if ( !empty( $blockName ) ) {		
+			if ( property_exists( self::$pre_render_filters, $blockName ) && '' !== locate_template( self::$pre_render_filters->$blockName . '/index.php' ) ) {
+				return PFWP_Components::get_template_part(
+					self::$pre_render_filters->$blockName . '/index',
+					null,
+					array(
+						'filter_type'  => 'pre_render',
+						'attributes'   => $block['attrs'],
+						'inner_blocks' => $block['innerBlocks'],
+					)
+				);
+			} elseif ( property_exists( self::$pre_render_filters, $blockName ) ) {
+				// If no PHP exists for filter, still add component CSS and JS assets if they exists
+				PFWP_Components::process_template_part( self::$pre_render_filters->$blockName . '/index' );
+			}
 		}
 
 		return null;

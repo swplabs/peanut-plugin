@@ -10,7 +10,8 @@ class PFWP_Assets {
 	private static $assets = array(
 		'blocks' => array(),
 		'components' => array(),
-		'plugins' => array()		
+		'plugins' => array(),
+		'themes' => array()
 	);
 	
 	private static $preloads = [];
@@ -23,6 +24,7 @@ class PFWP_Assets {
 				'blocks' => property_exists( $pfwp_global_config->compilations, 'blocks_elements' ) ? $pfwp_global_config->compilations->blocks_elements : (object) array(),
 				'components' => property_exists( $pfwp_global_config->compilations, 'components_elements' ) ? $pfwp_global_config->compilations->components_elements : (object) array(),
 				'plugins' => property_exists( $pfwp_global_config->compilations, 'plugins_elements' ) ? $pfwp_global_config->compilations->plugins_elements : (object) array(),
+				'themes' => property_exists( $pfwp_global_config->compilations, 'themes_elements' ) ? $pfwp_global_config->compilations->themes_elements : (object) array(),
 			);
 		}
 	}
@@ -42,6 +44,7 @@ class PFWP_Assets {
 	public static function register_scripts() {
 		self::register_runtime_script( 'plugins_elements' );
 		self::register_runtime_script( 'blocks_elements' );
+		self::register_runtime_script( 'themes_elements' );
 	}
 
 	public static function get_assets( $group = null ) {
@@ -65,6 +68,10 @@ class PFWP_Assets {
 	}
 
 	public static function get_asset_key( $group = 'components', $key = '', $entry_key = '' ) {
+		if ( !self::has_asset( $group, $key, $entry_key ) ) {
+			return false;	
+		}
+		
 		$entry_map = self::$assets->{$group}->entry_map->{$key};
 
 		if ( property_exists( $entry_map, $entry_key ) ) {
@@ -108,6 +115,39 @@ class PFWP_Assets {
 		return false;
 	}
 
+	public static function register_asset( $group = 'plugins', $handle = '', $key = '', $entry_key = '' ) {
+		global $pfwp_global_config;
+
+		$wp_deps_filename = self::get_wp_deps( $group, $key, $entry_key );
+	
+		if ( !$wp_deps_filename ) {
+			error_log( 'PFWP Error | could not get wp dependency filename for ' . $group . ' ' . $key . ' ' . $entry_key );	
+			return;
+		}
+		
+		$assets = self::get_key_assets( $group, $key, $entry_key );
+		$wp_deps_file = ABSPATH . $wp_deps_filename;
+	
+		if ( !file_exists( $wp_deps_file ) ) {
+			error_log( 'PFWP Error | ' . $wp_deps_file . ' does not exist' );	
+			return;
+		}
+		
+		$deps = require $wp_deps_file;
+	
+		$group_key = $group . '_elements';
+		
+		if ( isset( $pfwp_global_config->compilations->{$group_key}->runtime ) ) {
+			array_push( $deps['dependencies'], $group_key . '_webpack_runtime' );
+		}
+
+		wp_register_script(
+			$handle,
+			PFWP_SITE_URL . '/' . $assets->js[0],
+			$deps['dependencies'],
+			$deps['version']
+		);
+	}
 
 	public static function get_content( $file_path, $minify = false, $is_url = true ) {
 		global $pfwp_global_config;
@@ -116,6 +156,7 @@ class PFWP_Assets {
 			$file_path = parse_url( $file_path)['path'];
 		}
 
+		// TODO: search and replace str_starts_with for better PHP backwards compat
 		if ( str_starts_with( $file_path, '/' ) ) {
 			$file_path = substr( $file_path, 1 );
 		}

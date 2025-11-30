@@ -12,11 +12,15 @@ if ( ! defined( 'PFWP_VERSION' ) ) {
 class PFWP_Components {
 	public static $components;
 	public static $js_data;
+	public static $lazy_load_data;
 	public static $comp_css_data;
  	public static $comp_css_metadata;
 	private static $inline_styles = array();
-
-	private static function get_key( $slug, $name ) {
+		
+	public static $current_template_uuid;
+	public static $current_template_uuids;
+	
+	private static function get_key( $slug, $name = null ) {
 		$matches = self::match_file_name( $slug );
 
 		if ( isset( $matches['element'] ) ) {
@@ -28,13 +32,53 @@ class PFWP_Components {
 				return $key;
 			}
 		} else {
-			return false;
+			return null;
 		}
 	}
+		
+	private static function match_file_name( $file_name ) {
+		preg_match( '/\/?components\/(?P<element>[^\/]+)\/index(\.php)?$/', $file_name, $matches );
+		return $matches;
+	}
+	
+	private static function uuid( $key = null, $uuid = null ) {
+		if ( !isset( $uuid ) ) {
+			$uuid = uniqid();
+		}
 
+		if ( $key ) {
+			if ( isset( self::$current_template_uuids->{$key} ) ) {
+				$uuid = self::$current_template_uuids->{$key};
+			} else {
+				$uuid = $key . '-' . $uuid;
+				self::$current_template_uuids->{$key} = $uuid;
+			}
+		}	
+
+		return $uuid;	
+	}
+	
+	private static function set_uuid( $key, $uuid = null ) {
+		if ( !isset( $uuid ) ) {
+			$uuid = uniqid();
+		}
+		
+		return self::uuid( $key, $uuid );
+	}
+	
+	private static function set_js_data( $key, $uuid, $js_data ) {
+		if ( !property_exists( self::$js_data, $key ) ) {
+			self::$js_data->$key = (object) array();
+		}	
+		
+		self::$js_data->$key->$uuid = $js_data;
+	}
+	
 	public static function initialize() {
 		self::$components = (object) array();
 		self::$js_data = (object) array();
+		self::$lazy_load_data = (object) array();
+		self::$current_template_uuids = (object) array();
 	}
 
 	// TODO: can we define defaults for a components parse_args in JSON metadata schema and use here if available?
@@ -60,7 +104,7 @@ class PFWP_Components {
 	/**
 	 * Returns component as executed php stored in a variable
 	 */
-	public static function get_template_part( $slug, $name = null, $args = array() ) {
+	public static function get_template_part( $slug, $name = null, $args = array() ) {	
 		ob_start();
 
 		if ( false !== get_template_part( $slug, $name, $args ) ) {
@@ -95,7 +139,7 @@ class PFWP_Components {
 		return $assets;
 	}
 
-	public static function process_template_part( $slug, $name = null ) {
+	public static function process_template_part( $slug, $name = null, $template = array(), $args = array() ) {
 		global $pfwp_global_config;
 
 		// Execute on theme presentation only
@@ -107,54 +151,230 @@ class PFWP_Components {
 			}
 		}
 
-		$matches = self::match_file_name( '/' . $slug . '.php' );
+		$key = self::get_key( $slug, $name );
+		
+		if ( !$key ) {
+			return;	
+		}
+				
+		$data = self::parse_args(
+			$args,
+			array(
+				'attributes' => array(),
+				'pfwp_lazy_loader' => array(
+					'resources' => null,
+					'conditional' => false,
+					'observed' => false,
+					'lazy_id' => null,
+					'fetch_priority' => 'low',
+					'preload_html' => ''
+				)
+			)
+		);
+		
+		$attrs = $data['attributes'];
+		
+		$lazy_options = $data['pfwp_lazy_loader'];
+		$lazy_resources = $lazy_options['resources'];
+		
+		self::set_uuid( $key, $lazy_options['lazy_id'] );
+				
+		if ( $key ) {
+			if ( !property_exists( self::$components, $key ) ) {
+				// Resource Data Initialization
+				self::$components->$key = (object) array(
+					'key'    => $key,
+					'slug'   => $slug,
+					'name'   => $name
+				);				
+			}
+			
+			$assets = property_exists( self::$components->$key, 'assets' ) ? self::$components->$key->assets : (object) array(
+				'js'  => array(),
+				'css' => array()
+			);
 
-		if ( ! array_key_exists( 'element', $matches ) ) {
+			if ( $lazy_resources !== 'all' ) {
+				if ( PFWP_Assets::has_asset( 'components', $key, 'style' ) ) {
+					$style_assets = self::process_assets( PFWP_Assets::get_key_assets( 'components', $key, 'style' ) );
+
+					if ( $pfwp_global_config->css_inject ) {
+						$assets->js = array_unique( array_merge( $assets->js, $style_assets->js ) );
+					} else {
+						$assets->css = array_unique( array_merge( $assets->css, $style_assets->css ) );
+					}
+				}
+
+				if ( PFWP_Assets::has_asset( 'components', $key, 'view' ) ) {
+					$client_assets = self::process_assets( PFWP_Assets::get_key_assets( 'components', $key, 'view' ) );
+										
+					if ( $lazy_resources === 'js' ) {
+						// TODO: handle load of js on observation of component
+						if ( !property_exists( self::$lazy_load_data, $key ) ) {
+							self::$lazy_load_data->{$key} = (object) array(
+								'assets' => (object) array(
+									'js'  => $client_assets->js,
+									'css' => $client_assets->css
+								),
+								'instances' => array()
+							);
+						}
+						
+						array_push( self::$lazy_load_data->{$key}->instances, self::$current_template_uuids->{$key} );
+					} else {
+						$assets->js = array_unique( array_merge( $assets->js, $client_assets->js ) );
+						$assets->css = array_unique( array_merge( $assets->css, $client_assets->css ) );		
+					}
+				}
+
+				// Store Data
+				self::$components->$key->assets = $assets;
+			}
+		}
+	}
+
+	
+	public static function lazy_load( $slug, $name = null, $args = array() ) {
+		// check if component exists
+		$component =self::get_key( $slug, $name );
+
+		if ( !$component ) {
 			return;
 		}
+	
+		$data = self::parse_args(
+			$args,
+			array(
+				'attributes' => array(),
+				'pfwp_lazy_loader' => array(
+					'resources' => 'all',
+					'conditional' => false,
+					'observed' => true,
+					'lazy_id' => null,
+					'fetch_priority' => 'low',
+					'preload_html' => ''
+				)
+			)
+		);
 
-		$key = self::get_key( $slug, $name );
+		
+		$attrs = $data['attributes'];
+		$options = $data['pfwp_lazy_loader'];
+		$resources = $options['resources'];
+		
+		$html = '';
+		
+		if ( $resources === 'all' ) {
+			$key = 'pfwp-lazy-loader';
 
-		if ( $key && ! property_exists( self::$components, $key ) ) {
-			$assets = (object) array(
-				'js'  => array(),
-				'css' => array(),
-			);
-
-			// JS Instance Initialization
-			self::$js_data->$key = (object) array();
-
-			if ( PFWP_Assets::has_asset( 'components', $key, 'style' ) ) {
-				$style_assets = self::process_assets( PFWP_Assets::get_key_assets( 'components', $key, 'style' ) );
-
-				if ( $pfwp_global_config->css_inject ) {
-					$assets->js = array_merge( $assets->js, $style_assets->js );
-				} else {
-					$assets->css = array_merge( $assets->css, $style_assets->css );
-				}
+			$file_name = 'components/' . $key . '/index.php';
+			
+			self::set_uuid( $key, $options['lazy_id'] );
+			
+			/*
+			if ( !property_exists( self::$js_data, $key ) ) {
+				self::$js_data->$key = (object) array();
 			}
-
-			if ( PFWP_Assets::has_asset( 'components', $key, 'view' ) ) {
-				$client_assets = self::process_assets( PFWP_Assets::get_key_assets( 'components', $key, 'view' ) );
-				$assets->js    = array_merge( $assets->js, $client_assets->js );
-				$assets->css   = array_merge( $assets->css, $client_assets->css );
-			}
-
-			// Store Data
-			self::$components->$key = (object) array(
-				'key'    => $key,
-				'slug'   => $slug,
-				'name'   => $name,
-				'assets' => $assets,
+			*/
+			
+			$base_classes = array( $key );
+			
+			$html = '<div ' . self::html_attributes( $file_name, $data, array( 'base' => implode( ' ', $base_classes ) ), false, $options['lazy_id'] ) . '>' . $options['preload_html'] . '</div>';
+			
+			self::create_js_data(
+				$file_name,
+				array(
+					'component' => $component,
+					'attributes' => $attrs,
+					'options' => $options
+				)
 			);
+			
+			self::post_template_part( $file_name );
+		} else if ( $resources === 'js' ) {						
+			$html = self::get_template_part( $slug, $name, $args );
 		}
+		
+		return $html;
+	}
+	
+	public static function html_classes( $file_name, $component_data, $base_classes = '' ) {
+		$key = self::get_key( $file_name );
+
+		$attrs = $component_data['attributes'];
+		
+		// TODO: namespace with pfwp_css_class_name
+		if ( array_key_exists( 'css_class_name', $attrs ) && $css_class_name = $attrs['css_class_name'] ) {
+			return 'class="' . $css_class_name . '"';
+		}
+		
+		$classes = array();
+			
+		if ( array_key_exists( 'variant', $attrs ) && $variant = $attrs['variant'] ) {
+			array_push( $classes, $key . '-variant-' . $variant );
+		}
+
+		if ( array_key_exists( 'css_classes', $attrs ) && $css_classes = $attrs['css_classes'] ) {
+			$classes = array_merge( $classes, $css_classes );
+		}
+		
+  	$appended = count( $classes ) > 0 ? implode( ' ', $classes ) : '';
+		
+		$html = $base_classes . ( $appended ? ' ' . $appended : '' );
+  
+  	return $html ? 'class="' . $html . '"' : '';
+	}
+	
+	public static function html_attributes( $file_name, $component_data = array( 'attributes' => array(), 'pfwp_lazy_loader' => array() ), $classes = array( 'base' => '' ), $skip_uuid = null ) {
+		$key = self::get_key( $file_name );
+		
+		$html = array();
+
+		if ( $attr_html = self::html_classes( $file_name, $component_data, $classes['base'] ) ) {
+			array_push( $html, $attr_html );
+		}
+
+		$lazy_options = array_key_exists( 'pfwp_lazy_loader', $component_data ) ? $component_data['pfwp_lazy_loader'] : array();
+		$lazy_resources = array_key_exists( 'resources', $lazy_options ) ? $lazy_options['resources'] : null;
+				
+		// If UUID not set, check to see if there is a js file
+		if ( !isset( $skip_uuid ) ) {
+			$skip_uuid = !PFWP_Assets::has_asset( 'components', $key, 'view' );
+		}
+		
+		if ( !$skip_uuid ) {
+			$id_html = 'id="' . self::$current_template_uuids->{$key} . '"';
+			array_push( $html, $id_html );
+			
+			self::set_js_data( $key, self::$current_template_uuids->{$key}, (object) array() );
+			
+			$data_html = '';
+			
+			// Lazy load data and attributes
+			if ( $lazy_resources === 'js' ) {
+				$data_html = 'data-pfwp-lazy-loader-status="loading" data-pfwp-lazy-loader="js"';
+			} else if ( $lazy_resources === 'all' ) {
+				$data_html = 'data-pfwp-lazy-loader-status="loading" data-pfwp-lazy-loader="all"';
+			}
+			
+			array_push( $html, $data_html );
+		}
+		
+		return implode( ' ', $html );
 	}
 
-	private static function match_file_name( $file_name ) {
-		preg_match( '/\/?components\/(?P<element>[^\/]+)\/index(\.php)?$/', $file_name, $matches );
-		return $matches;
+	
+	public static function create_js_data( $file_name, $data ) {	
+		$key = self::get_key( $file_name );
+		
+		if ( !$key || !self::$current_template_uuids->{$key} ) {
+			return;
+		}
+				
+		self::set_js_data( $key, self::$current_template_uuids->{$key}, $data );
 	}
 
+	// Deprecated
 	public static function store_instance_js_data( $file_name, $uuid, $data ) {
 		/*
 		if ( is_admin() || is_feed() || ( defined( 'REST_REQUEST' ) && REST_REQUEST ) ) {
@@ -162,45 +382,24 @@ class PFWP_Components {
 		}
 		*/
 
-		$matches = self::match_file_name( $file_name );
-		$key     = $matches['element'];
-
-		if ( ! property_exists( self::$js_data, $key ) ) {
-			self::$js_data->$key = (object) array();
-		}
-
-		self::$js_data->$key->$uuid = $data;
+		$key = self::get_key( $file_name );
+		
+		self::set_js_data( $key, self::$current_template_uuids->{$key}, $data );
 	}
-
+	
 	public static function get_uuid( $file_name, $uuid = null ) {
-		global $wpdb;
+		$key = self::get_key( $file_name );
+		
+		// backwards compat
+		self::set_js_data( $key, self::$current_template_uuids->{$key}, (object) array() );
 
-		$matches = self::match_file_name( $file_name );
-
-		$prefix = '';
-
-		if ( isset( $matches['element'] ) ) {
-			$prefix .= $matches['element'] . '-';
-		}
-
-		if ( !isset( $uuid ) ) {
-			$uuid = uniqid();
-		}
-
-		$uuid = $prefix . $uuid;
-
-		if ( isset( $matches['element'] ) ) {
-			// Initialize data if we ask for a uuid
-			$key = $matches['element'];
-
-			if ( ! property_exists( self::$js_data, $key ) ) {
-				self::$js_data->$key = (object) array();
-			}
-
-			self::$js_data->$key->$uuid = null;
-		}
-
-		return $uuid;
+		return self::uuid( $key, $uuid );
+	}
+	
+	public static function post_template_part( $file_name ) {
+		$key = self::get_key( $file_name );
+		
+		self::$current_template_uuids->{$key} = null;
 	}
 
 	public static function inline_instance_js_data() {
@@ -229,7 +428,7 @@ class PFWP_Components {
 		if ( property_exists( $component_chunks, 'pfwp_sdk' ) ) {
 			echo '<script src="' . $pfwp_global_config->public_path . $components->chunk_groups->pfwp_sdk->main_assets[0]->name . '" id="pfwp_js_sdk"></script>' . PHP_EOL;
 		} else {
-			$sdk_js = PFWP_PLUGIN_URL . '/assets/pfwp_sdk.9b541e5e7ddfdf6a80b6.js';
+			$sdk_js = PFWP_PLUGIN_URL . '/assets/pfwp_sdk.b29a4bcbc006a330bcfb.js';
 			echo '<script src="' . $sdk_js . '" id="pfwp_js_sdk"></script>' . PHP_EOL;
 		}
 
@@ -268,7 +467,8 @@ class PFWP_Components {
 			),
 			'metadata' => array(
 				'js' => $comp_js_metadata
-			)
+			),
+			'lazy_load' => self::$lazy_load_data
 		);
 
 		echo '<script>' . PHP_EOL;
@@ -316,9 +516,11 @@ class PFWP_Components {
 }
 
 add_action( 'after_setup_theme', array( 'PFWP_Components', 'initialize' ), 2 );
-add_action( 'get_template_part', array( 'PFWP_Components', 'process_template_part' ), 10, 3 );
 add_action( 'wp_footer', array( 'PFWP_Components', 'inline_instance_js_data' ), 998 );
 add_action( 'wp_footer', array( 'PFWP_Components', 'inject_footer' ), 1000 );
+
+add_action( 'get_template_part', array( 'PFWP_Components', 'process_template_part' ), 10, 4 );
+add_action( 'wp_after_load_template', array( 'PFWP_Components', 'post_template_part' ), 11, 1 );
 
 // TODO: create custom "pfwp_end_marker" action for this
 add_action( 'wp_footer', array( 'PFWP_Components', 'add_head_style_var' ), 997 );
